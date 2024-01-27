@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Expense/Income Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f2f2f2;
+      padding: 20px;
+      margin: 0;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    #form {
+      background-color: #fff;
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0px 0px 10px 2px #ccc;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin-top: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
+
+    input[type="checkbox"] {
+      margin-left: 5px;
+    }
+
+    button[type="submit"] {
+      background-color: #4CAF50;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    button[type="submit"]:hover {
+      background-color: #45a049;
+    }
+
+    @media (max-width: 480px) {
+      #form {
+        width: 90%;
+      }
+    }
+    .open-link {
+    display: inline-block;
+    background-color: #0073e6;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 3px;
+    text-decoration: none;
+    margin-top: 20px;
+  }
+
+  .open-link:hover {
+    background-color: #005ba1;
+  }
+  </style>
+</head>
+<body>
+  <h1>Expense/Income Form</h1>
+  <form id="form">
+    <label for="Category">Category:</label>
+    <select name="Category" id="Category" required>
+      <option value="Rent">Rent</option>
+      <option value="Travel">Travel</option>
+      <option value="Food">Food</option>
+      <option value="Other">Other</option>
+    </select><br><br>
+
+    <label for="Amount">Amount:</label>
+    <input type="number" name="Amount" id="Amount" required><br><br>
+
+    <label for="Note">Note:</label>
+    <textarea name="Note" id="Note"></textarea><br><br>
+
+    <label for="Income">Income:</label>
+    <input type="checkbox" name="Income" id="Income"><br><br>
+
+    <button type="submit" id="submit">Submit</button>
+  </form>
+  <a class='open-link' href='/1'>Open Link</a>
+  <script>
+    const form = document.querySelector("#form");
+    const submitButton = document.querySelector("#submit");
+    const scriptURL = '<deploy link>';
+    const categorySelect = document.querySelector("#Category");
+    const incomeCheckbox = document.querySelector("#Income");
+
+    incomeCheckbox.addEventListener('change', () => {
+      if (incomeCheckbox.checked) {
+        // Display income categories
+        categorySelect.innerHTML = `
+          <option value="Salary">Salary</option>
+          <option value="Dad">Dad</option>
+          <option value="Other">Other</option>
+        `;
+      } else {
+        // Display expense categories
+        categorySelect.innerHTML = `
+          <option value="Rent">Rent</option>
+          <option value="Travel">Travel</option>
+          <option value="Food">Food</option>
+          <option value="Other">Other</option>
+        `;
+      }
+    });
+
+    form.addEventListener('submit', e => {
+      submitButton.disabled = true;
+      e.preventDefault();
+      let requestBody = new FormData(form);
+      fetch(scriptURL, { method: 'POST', body: requestBody })
+        .then(response => {
+          alert('Success!', response);
+          submitButton.disabled = false;
+        })
+        .catch(error => {
+          alert('Error!', error.message);
+          submitButton.disabled = false;
+        });
+    });
+  </script>
+</body>
+</html>
