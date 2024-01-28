@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import os
 from ttkthemes import ThemedStyle
 
-
 class ExpenseIncomeReportGenerator:
     def __init__(self, root):
         self.root = root
@@ -14,8 +13,6 @@ class ExpenseIncomeReportGenerator:
 
         self.style = ThemedStyle(self.root)
         self.style.set_theme("arc")  # Choose a theme (e.g., "arc", "clearlooks", "equilux", etc.)
-
-        
 
         self.month_label = ttk.Label(root, text="Select Month:", font=("Helvetica", 12))
         self.month_var = tk.StringVar()
@@ -30,7 +27,7 @@ class ExpenseIncomeReportGenerator:
 
         self.success_label = ttk.Label(root, text="", foreground="green", font=("Helvetica", 12))
         self.success_label.pack(pady=10)
-        
+
         self.month_label.pack(pady=10)
         self.month_dropdown.pack(pady=10)
         self.year_label.pack(pady=10)
@@ -44,7 +41,7 @@ class ExpenseIncomeReportGenerator:
     def get_months(self, selected_year=None):
         # Customize this function to populate months dynamically based on available data and selected year
         # For now, returning all months
-        return ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        return ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
     def get_years(self):
         # Customize this function to populate years dynamically based on available data
@@ -61,17 +58,21 @@ class ExpenseIncomeReportGenerator:
         selected_month = self.month_var.get()
         selected_year = self.year_var.get()
 
-        if not selected_month or not selected_year or not self.csv_file_path:
-            messagebox.showerror("Error", "Please select month, year, and CSV file.")
+        if not selected_year or not self.csv_file_path:
+            messagebox.showerror("Error", "Please select year and CSV file.")
             return
 
-        # Check if the PDF file already exists
-        pdf_file_path = f"Report_{selected_month}_{selected_year}.pdf"
-        if os.path.exists(pdf_file_path):
-            # Ask for confirmation before replacing the existing PDF
-            confirm_replace = messagebox.askyesno("Confirmation", f"The report file '{pdf_file_path}' already exists. Do you want to replace it?")
-            if not confirm_replace:
-                return
+        if selected_month == "":
+            # Generate report for the entire year
+            self.generate_yearly_report(selected_year)
+        else:
+            # Generate report for the selected month and year
+            self.generate_monthly_report(selected_month, selected_year)
+
+    def generate_monthly_report(self, selected_month, selected_year):
+        if not selected_month:
+            messagebox.showerror("Error", "Please select month.")
+            return
 
         # Read data from selected CSV file
         df = pd.read_csv(self.csv_file_path, parse_dates=["TIME"], dayfirst=True)
@@ -101,9 +102,58 @@ class ExpenseIncomeReportGenerator:
             self.create_table(pdf, selected_month_data[selected_month_data['TYPE'].str.contains('Income', case=False)], "Income", "CATEGORY")
             self.create_pie_chart(pdf, selected_month_data[selected_month_data['TYPE'].str.contains('Income', case=False)], "Income", "CATEGORY")
             self.create_pie_chart(pdf, selected_month_data[selected_month_data['TYPE'].str.contains('Expense', case=False)], "Expense", "CATEGORY")
+            self.create_category_table(pdf, selected_month_data[selected_month_data['TYPE'].str.contains('Expense', case=False)], "Expense", "CATEGORY")
+            self.create_category_table(pdf, selected_month_data[selected_month_data['TYPE'].str.contains('Income', case=False)], "Income", "CATEGORY")
 
         self.success_label.config(text=f"Report generated successfully: {pdf_file_path}")
-        
+
+    def generate_yearly_report(self, selected_year):
+        # Read data from selected CSV file
+        df = pd.read_csv(self.csv_file_path, parse_dates=["TIME"], dayfirst=True)
+
+        # Filter data for the selected year
+        selected_year_data = df[df['TIME'].dt.strftime('%Y') == selected_year]
+
+        # Calculate sum of income and expense for the selected year
+        income_sum = selected_year_data.loc[
+            selected_year_data['TYPE'].str.contains('Income', case=False), 
+            'AMOUNT'
+        ].sum()
+
+        expense_sum = selected_year_data.loc[
+            selected_year_data['TYPE'].str.contains('Expense', case=False), 
+            'AMOUNT'
+        ].sum()
+
+        # Generate PDF report
+        pdf_file_path = f"Report_{selected_year}.pdf"
+        with PdfPages(pdf_file_path) as pdf:
+            self.add_summary_to_pdf(pdf, "", selected_year, income_sum, expense_sum)
+            self.create_table(pdf, selected_year_data[selected_year_data['TYPE'].str.contains('Expense', case=False)], "Expense", "CATEGORY")
+            self.create_table(pdf, selected_year_data[selected_year_data['TYPE'].str.contains('Income', case=False)], "Income", "CATEGORY")
+            self.create_pie_chart(pdf, selected_year_data[selected_year_data['TYPE'].str.contains('Income', case=False)], "Income", "CATEGORY")
+            self.create_pie_chart(pdf, selected_year_data[selected_year_data['TYPE'].str.contains('Expense', case=False)], "Expense", "CATEGORY")
+            self.create_category_table(pdf, selected_year_data[selected_year_data['TYPE'].str.contains('Expense', case=False)], "Expense", "CATEGORY")
+            self.create_category_table(pdf, selected_year_data[selected_year_data['TYPE'].str.contains('Income', case=False)], "Income", "CATEGORY")
+
+        self.success_label.config(text=f"Report generated successfully: {pdf_file_path}")
+
+    def create_category_table(self, pdf, data, title, category_column):
+        fig, ax = plt.subplots(figsize=(8, 4))  # Create a figure here
+        ax.axis('tight')
+        ax.axis('off')
+        ax.set_title(f"{title} Table by Category")
+
+        grouped_data = data.groupby(category_column)['AMOUNT'].sum().reset_index()
+        table_data = [grouped_data.columns.tolist()] + grouped_data.values.tolist()
+        table = ax.table(cellText=table_data, colLabels=None, cellLoc='center', loc='center')
+
+        for i, key in enumerate(table_data[0]):
+            table[(0, i)].set_fontsize(10)
+            table[(0, i)].set_text_props(weight='bold')
+
+        pdf.savefig(fig)  # Pass the figure to savefig
+        plt.close()
 
     def add_summary_to_pdf(self, pdf, selected_month, selected_year, income_sum, expense_sum):
         # Create a summary page in the PDF
@@ -148,9 +198,8 @@ class ExpenseIncomeReportGenerator:
         else:
             print(f"No data for {title} categories in the selected month.")
 
-
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("800x600")  # Set the initial size to 800x600 (adjust as needed)
+    root.geometry("600x600")  # Set the initial size to 800x600 (adjust as needed)
     app = ExpenseIncomeReportGenerator(root)
     root.mainloop()
